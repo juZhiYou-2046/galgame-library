@@ -1,10 +1,14 @@
 """游戏 CRUD API 路由"""
 
+import os
+import uuid
+from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 
+from app.config import ALLOWED_EXTENSIONS, COVERS_DIR, COVERS_URL
 from app.database import get_db
 from app.schemas import GameCreate, GameListResponse, GameResponse, GameUpdate
 from app.services.game_service import GameService
@@ -58,3 +62,44 @@ def delete_game(game_id: int, db: Session = Depends(get_db)):
     success = GameService.delete_game(db, game_id)
     if not success:
         raise HTTPException(status_code=404, detail="游戏不存在")
+
+
+@router.post("/{game_id}/cover", response_model=GameResponse)
+def upload_cover(game_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """上传游戏封面图片"""
+    game = GameService.get_game(db, game_id)
+    if not game:
+        raise HTTPException(status_code=404, detail="游戏不存在")
+
+    # 验证文件类型
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"不支持的文件格式: {ext}，仅支持 {', '.join(ALLOWED_EXTENSIONS)}",
+        )
+
+    # 生成唯一文件名，避免覆盖
+    unique_name = f"{uuid.uuid4().hex}{ext}"
+    save_path = COVERS_DIR / unique_name
+
+    # 保存文件
+    content = file.read()
+    save_path.write_bytes(content)
+
+    # 删除旧封面文件
+    if game.cover:
+        old_path = COVERS_DIR / Path(game.cover).name
+        if old_path.exists():
+            try:
+                old_path.unlink()
+            except OSError:
+                pass
+
+    # 更新数据库中的封面路径
+    cover_url = f"{COVERS_URL}/{unique_name}"
+    game.cover = cover_url
+    db.commit()
+    db.refresh(game)
+
+    return game

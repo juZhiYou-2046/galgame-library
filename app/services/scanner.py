@@ -34,11 +34,11 @@ class ScannerService:
                 if ext in GAME_FILE_EXTENSIONS:
                     full_path = Path(root) / file
                     results.append({
-                        "file_name": file,
-                        "file_path": str(full_path),
+                        "name": file,
+                        "path": str(full_path),
                         "folder": str(root),
                         "extension": ext,
-                        "size_bytes": full_path.stat().st_size if full_path.exists() else 0,
+                        "size": full_path.stat().st_size if full_path.exists() else 0,
                     })
 
         return results
