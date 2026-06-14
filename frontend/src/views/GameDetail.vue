@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getGame, deleteGame, uploadCover } from '../api/games'
+import { getReviews, createReview, deleteReview } from '../api/reviews'
 
 const route = useRoute()
 const router = useRouter()
@@ -11,6 +12,12 @@ const game = ref(null)
 const loading = ref(false)
 const uploadLoading = ref(false)
 const fileInput = ref(null)
+
+// 评价相关
+const reviews = ref([])
+const reviewForm = ref({ rating: 0, content: '', reviewer: '' })
+const submittingReview = ref(false)
+const showReviewForm = ref(false)
 
 async function fetchGame() {
   loading.value = true
@@ -85,7 +92,55 @@ async function handleFileChange(event) {
   }
 }
 
-onMounted(fetchGame)
+// 评价功能
+async function fetchReviews() {
+  try {
+    reviews.value = await getReviews(route.params.id)
+  } catch {
+    reviews.value = []
+  }
+}
+
+async function submitReview() {
+  if (reviewForm.value.rating === 0) {
+    ElMessage.warning('请选择评分')
+    return
+  }
+  submittingReview.value = true
+  try {
+    await createReview(route.params.id, reviewForm.value)
+    ElMessage.success('评价提交成功')
+    reviewForm.value = { rating: 0, content: '', reviewer: '' }
+    showReviewForm.value = false
+    await fetchReviews()
+    await fetchGame() // 刷新平均分
+  } catch (err) {
+    ElMessage.error('评价提交失败: ' + (err.response?.data?.detail || err.message))
+  } finally {
+    submittingReview.value = false
+  }
+}
+
+async function handleDeleteReview(reviewId) {
+  try {
+    await deleteReview(route.params.id, reviewId)
+    ElMessage.success('评价已删除')
+    await fetchReviews()
+    await fetchGame()
+  } catch {
+    ElMessage.error('删除评价失败')
+  }
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return ''
+  return new Date(dateStr).toLocaleDateString('zh-CN')
+}
+
+onMounted(() => {
+  fetchGame()
+  fetchReviews()
+})
 </script>
 
 <template>
@@ -192,6 +247,52 @@ onMounted(fetchGame)
         </el-card>
       </template>
     </div>
+
+    <!-- 评价区域 -->
+    <template v-if="game">
+      <el-card shadow="never" class="review-card">
+        <div class="review-header">
+          <h3 class="section-title">用户评价 ({{ reviews.length }})</h3>
+          <el-button type="primary" size="small" @click="showReviewForm = !showReviewForm">
+            {{ showReviewForm ? '取消' : '写评价' }}
+          </el-button>
+        </div>
+
+        <!-- 写评价表单 -->
+        <div v-if="showReviewForm" class="review-form">
+          <el-form label-width="80px">
+            <el-form-item label="评分">
+              <el-rate v-model="reviewForm.rating" :max="10" show-score score-template="{value} 分" />
+            </el-form-item>
+            <el-form-item label="评论者">
+              <el-input v-model="reviewForm.reviewer" placeholder="你的名字（选填）" style="width: 200px" />
+            </el-form-item>
+            <el-form-item label="评论内容">
+              <el-input v-model="reviewForm.content" type="textarea" :rows="3" placeholder="写下你的评价..." />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" :loading="submittingReview" @click="submitReview">提交评价</el-button>
+            </el-form-item>
+          </el-form>
+        </div>
+
+        <!-- 评价列表 -->
+        <div v-if="reviews.length === 0 && !showReviewForm" class="no-reviews">
+          暂无评价，来写第一个评价吧
+        </div>
+        <div v-else class="review-list">
+          <div v-for="review in reviews" :key="review.id" class="review-item">
+            <div class="review-meta">
+              <el-rate v-model="review.rating" disabled :max="10" size="small" />
+              <span class="reviewer-name">{{ review.reviewer || '匿名用户' }}</span>
+              <span class="review-date">{{ formatDate(review.created_at) }}</span>
+              <el-button size="small" type="danger" text @click="handleDeleteReview(review.id)">删除</el-button>
+            </div>
+            <p v-if="review.content" class="review-content">{{ review.content }}</p>
+          </div>
+        </div>
+      </el-card>
+    </template>
   </div>
 </template>
 
@@ -372,5 +473,72 @@ onMounted(fetchGame)
   .info-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.review-card {
+  margin-top: 16px;
+}
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.review-form {
+  padding: 16px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.no-reviews {
+  text-align: center;
+  color: var(--text-light);
+  padding: 32px 0;
+}
+
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.review-item {
+  padding: 12px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.review-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.reviewer-name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.review-date {
+  font-size: 12px;
+  color: var(--text-light);
+}
+
+.review-content {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
 }
 </style>

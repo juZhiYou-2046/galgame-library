@@ -15,7 +15,7 @@ class Base(DeclarativeBase):
 
 def init_db():
     """创建所有表"""
-    from app.models import Game  # noqa: F401
+    from app.models import Game, Review  # noqa: F401
     Base.metadata.create_all(bind=engine)
 
 

@@ -52,3 +52,22 @@ class GameListResponse(BaseModel):
     """游戏列表响应"""
     total: int
     items: list[GameResponse]
+
+
+class ReviewCreate(BaseModel):
+    """创建评价请求"""
+    rating: int = Field(..., ge=1, le=10, description="评分 1-10")
+    content: str = Field(default="", description="评论内容")
+    reviewer: str = Field(default="", max_length=100, description="评论者")
+
+
+class ReviewResponse(BaseModel):
+    """评价响应模型"""
+    id: int
+    game_id: int
+    rating: int
+    content: str
+    reviewer: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

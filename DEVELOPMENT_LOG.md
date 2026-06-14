@@ -46,3 +46,28 @@
 
 - .app 是目录而非文件，使用 `rglob` 计算包内文件大小
 - 标题清理使用正则去除版本号、括号标记等噪音，提升自动识别准确率
+
+## Step 3: 评分评价系统（1-10 评分 + 评论）
+
+**日期:** 2026-06-14
+
+**目标:** 支持用户对游戏打分和写评论，自动计算平均分。
+
+### 后端改动
+
+- **修改 `app/models.py`:** 新增 `Review` 模型（id, game_id FK, rating 1-10, content, reviewer, created_at），Game 模型新增 reviews relationship 并设置级联删除
+- **修改 `app/schemas.py`:** 新增 `ReviewCreate` 和 `ReviewResponse` schema
+- **新增 `app/services/review_service.py`:** 评价 CRUD 逻辑，创建/删除评价时自动用 SQL AVG 重算游戏平均分
+- **新增 `app/api/reviews.py`:** 评价 API 路由（GET 列表、POST 创建、DELETE 删除），路径 `/api/games/{id}/reviews`
+- **修改 `app/main.py`:** 注册 reviews router
+- **修改 `app/database.py`:** init_db 导入 Review 模型
+
+### 前端改动
+
+- **新增 `frontend/src/api/reviews.js`:** 评价 API 调用封装
+- **修改 `frontend/src/views/GameDetail.vue`:** 新增评价区域（评价列表 + 写评价表单），评价列表展示评分、评论者、时间、内容；提交评价后自动刷新游戏平均分
+
+### 技术决策
+
+- Game.rating 由评价自动计算（SQL AVG），用户不可在表单中直接修改
+- 评价使用整数评分（1-10），Game.rating 存储浮点平均分
