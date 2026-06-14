@@ -165,3 +165,8 @@
 - **新增 `.github/workflows/build-desktop.yml`:** GitHub Actions CI/CD，在 macOS 和 Windows runner 上构建安装包，推送 tag 时自动创建 Release
 - **修改 `app/main.py`:** FastAPI 托管前端静态文件（SPA 路由回退）
 - **修改 `.gitignore`:** 新增构建产物、测试缓存等忽略规则
+
+### Bug 修复
+
+- **修改 `app/main.py`:** 修复 PyInstaller 打包后找不到前端文件的 bug（`_find_frontend_dist()` 新增 `sys._MEIPASS` 路径查找）
+- **修改 `build_desktop_ci.py`:** 增强错误处理和版本号解析，缩短 PyInstaller hidden-import 列表

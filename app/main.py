@@ -1,5 +1,6 @@
 """FastAPI 应用入口"""
 
+import sys
 from pathlib import Path
 
 import uvicorn
@@ -56,6 +57,11 @@ def _find_frontend_dist() -> Path | None:
         Path(__file__).resolve().parent / "frontend_dist",
         Path.cwd() / "frontend" / "dist",
     ]
+
+    # PyInstaller 打包后的临时目录
+    if getattr(sys, "frozen", False):
+        candidates.append(Path(sys._MEIPASS) / "frontend_dist")
+
     for c in candidates:
         if c.is_dir() and (c / "index.html").exists():
             return c
