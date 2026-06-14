@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getGame, createGame, updateGame } from '../api/games'
+import { getTagSuggestions } from '../api/tags'
 
 const route = useRoute()
 const router = useRouter()
@@ -10,6 +11,7 @@ const router = useRouter()
 const isEdit = computed(() => !!route.params.id)
 const loading = ref(false)
 const submitting = ref(false)
+const tagSuggestions = ref([])
 
 const form = ref({
   title: '',
@@ -88,6 +90,28 @@ function handleCancel() {
   }
 }
 
+// 标签自动补全
+async function queryTagSuggestions(queryString, cb) {
+  try {
+    const suggestions = await getTagSuggestions(queryString)
+    // 过滤掉已选中的标签
+    const existingTags = (form.value.tags || '').split(',').map(t => t.trim()).filter(Boolean)
+    const filtered = suggestions
+      .filter(s => !existingTags.includes(s))
+      .map(s => ({ value: s }))
+    cb(filtered)
+  } catch {
+    cb([])
+  }
+}
+
+function handleTagSelect(item) {
+  // 将选中的标签追加到已有标签后面
+  const existing = (form.value.tags || '').split(',').map(t => t.trim()).filter(Boolean)
+  existing.push(item.value)
+  form.value.tags = existing.join(',')
+}
+
 onMounted(fetchGame)
 </script>
 
@@ -133,10 +157,19 @@ onMounted(fetchGame)
         </el-form-item>
 
         <el-form-item label="标签" prop="tags">
-          <el-input
+          <el-autocomplete
             v-model="form.tags"
+            :fetch-suggestions="queryTagSuggestions"
+            :trigger-on-focus="false"
             placeholder="多个标签用逗号分隔，如：冒险,悬疑,催泪"
-          />
+            clearable
+            style="width: 100%"
+            @select="handleTagSelect"
+          >
+            <template #default="{ item }">
+              <span>{{ item.value }}</span>
+            </template>
+          </el-autocomplete>
         </el-form-item>
 
         <el-form-item label="文件夹路径" prop="folder_path">

@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api import games, scanner
+from app.api import games, scanner, tags
 from app.config import COVERS_DIR
 from app.database import init_db
 
@@ -42,6 +42,7 @@ if COVERS_DIR.is_dir():
 # 注册路由
 app.include_router(games.router)
 app.include_router(scanner.router)
+app.include_router(tags.router)
 
 
 @app.get("/")

@@ -6,6 +6,7 @@ const route = useRoute()
 
 const navItems = [
   { path: '/', name: 'GameList', label: '游戏列表', icon: 'IceCream' },
+  { path: '/tags', name: 'TagCloud', label: '标签管理', icon: 'PriceTag' },
   { path: '/games/new', name: 'GameCreate', label: '添加游戏', icon: 'Plus' },
   { path: '/scan', name: 'Scanner', label: '扫描目录', icon: 'Search' },
 ]

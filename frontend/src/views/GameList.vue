@@ -1,10 +1,11 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getGames, deleteGame } from '../api/games'
 
 const router = useRouter()
+const route = useRoute()
 
 const games = ref([])
 const total = ref(0)
@@ -81,6 +82,12 @@ function goToScan() {
   router.push('/scan')
 }
 
+function filterByTag(tagName) {
+  tag.value = tagName
+  page.value = 1
+  fetchGames()
+}
+
 function getCoverUrl(cover) {
   if (!cover) return ''
   if (cover.startsWith('http')) return cover
@@ -88,6 +95,17 @@ function getCoverUrl(cover) {
 }
 
 onMounted(() => {
+  // 从 URL query 读取标签筛选参数（标签云跳转时使用）
+  if (route.query.tag) {
+    tag.value = route.query.tag
+  }
+  fetchGames()
+})
+
+// 监听 query 变化（从标签云页面跳转回来时）
+watch(() => route.query.tag, (newTag) => {
+  tag.value = newTag || ''
+  page.value = 1
   fetchGames()
 })
 </script>
@@ -173,7 +191,8 @@ onMounted(() => {
               v-for="t in (row.tags || '').split(',').filter(Boolean)"
               :key="t"
               size="small"
-              style="margin: 1px 2px"
+              style="margin: 1px 2px; cursor: pointer"
+              @click.stop="filterByTag(t.trim())"
             >
               {{ t.trim() }}
             </el-tag>

@@ -31,6 +31,12 @@ const routes = [
     component: () => import('../views/ScannerView.vue'),
     meta: { title: '扫描目录' },
   },
+  {
+    path: '/tags',
+    name: 'TagCloud',
+    component: () => import('../views/TagCloud.vue'),
+    meta: { title: '标签管理' },
+  },
 ]
 
 const router = createRouter({

@@ -3,7 +3,7 @@
 import os
 from typing import Optional
 
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 
 from app.models import Game
@@ -40,7 +40,10 @@ class GameService:
             query = query.filter(Game.developer.ilike(f"%{developer}%"))
 
         if tag:
-            query = query.filter(Game.tags.ilike(f"%{tag}%"))
+            # 精确标签匹配：在逗号分隔的 tags 字段中精确查找
+            # 通过前后加逗号避免子串误匹配（如 "act" 不匹配 "action"）
+            padded = "," + func.coalesce(Game.tags, "") + ","
+            query = query.filter(padded.ilike(f"%,{tag},%"))
 
         total = query.count()
         items = query.order_by(Game.updated_at.desc()).offset(skip).limit(limit).all()
