@@ -15,4 +15,11 @@ COVERS_URL = "/covers"
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 
 # 扫描时识别的游戏文件扩展名
-GAME_FILE_EXTENSIONS = {".exe", ".iso", ".mdf", ".mds", ".ccd", ".cue", ".bin"}
+GAME_FILE_EXTENSIONS = {
+    ".exe", ".iso", ".mdf", ".mds", ".ccd", ".cue", ".bin",
+    # macOS 格式
+    ".pkg", ".dmg", ".zip", ".rar", ".7z",
+}
+
+# .app 是 macOS 应用程序包（目录而非文件），需要特殊处理
+MACOS_APP_BUNDLE = ".app"

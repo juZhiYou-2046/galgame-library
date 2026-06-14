@@ -54,13 +54,37 @@ function toggleAll() {
   }
 }
 
-function guessTitleFromPath(path) {
-  const parts = path.replace(/\\/g, '/').split('/')
-  for (let i = parts.length - 2; i >= 0; i--) {
-    const name = parts[i].trim()
-    if (name && name !== '.' && name !== '..') return name
+function getFileIcon(item) {
+  const ext = (item.extension || '').toLowerCase()
+  if (ext === '.app') return 'Monitor'
+  if (ext === '.dmg') return 'Coin'
+  if (ext === '.pkg') return 'Box'
+  if (['.zip', '.rar', '.7z'].includes(ext)) return 'Files'
+  if (['.exe'].includes(ext)) return 'Monitor'
+  if (['.iso', '.mdf', '.mds', '.ccd'].includes(ext)) return 'Disc'
+  if (['.cue', '.bin'].includes(ext)) return 'Folder'
+  return 'Document'
+}
+
+function guessTitleFromPath(item) {
+  // 优先使用 name 字段（去除版本号等噪音）
+  let title = item.name || ''
+  // 去除扩展名
+  if (title.includes('.')) {
+    title = title.substring(0, title.lastIndexOf('.'))
   }
-  return parts[parts.length - 1]
+  // 去除版本号标记
+  title = title.replace(/\s*[\[\(][^\]\)]*[\]\)]\s*/g, ' ')
+  title = title.replace(/\s*v?\d+\.\d+(\.\d+)*\s*/g, ' ')
+  title = title.replace(/[_\-]+/g, ' ').replace(/\s+/g, ' ').trim()
+  if (!title) {
+    const parts = (item.path || '').replace(/\\/g, '/').split('/')
+    for (let i = parts.length - 2; i >= 0; i--) {
+      const name = parts[i].trim()
+      if (name && name !== '.' && name !== '..') return name
+    }
+  }
+  return title || '未知游戏'
 }
 
 function formatFileSize(bytes) {
@@ -87,7 +111,8 @@ async function addSelectedToLibrary() {
 
   for (const filePath of addTargets.value) {
     try {
-      const title = guessTitleFromPath(filePath)
+      const item = scanResult.value.items.find(i => i.path === filePath) || { path: filePath }
+      const title = guessTitleFromPath(item)
       await createGame({
         title,
         folder_path: filePath,

@@ -26,3 +26,23 @@
 
 - 保持逗号分隔文本存储而非新建标签表，降低改动复杂度
 - 精确匹配通过 SQL 字符串拼接实现，兼容 SQLite 且无需全文索引
+
+## Step 2: 扫描增强（macOS 格式支持）
+
+**日期:** 2026-06-14
+
+**目标:** 扩展文件扫描器，支持 macOS 常见游戏文件格式。
+
+### 后端改动
+
+- **修改 `app/config.py`:** 扩展 `GAME_FILE_EXTENSIONS` 新增 `.pkg`, `.dmg`, `.zip`, `.rar`, `.7z`；新增 `MACOS_APP_BUNDLE` 常量用于 .app 目录检测
+- **修改 `app/services/scanner.py`:** 新增 .app 应用包检测（作为目录处理，计算内部文件大小）；新增 `_clean_title()` 方法清理文件名中的版本号等噪音；扫描时不再深入 .app 包内部
+
+### 前端改动
+
+- **修改 `frontend/src/views/ScannerView.vue`:** 扩展 `getFileIcon()` 支持新格式（.app 用 Monitor，.dmg 用 Coin，.pkg 用 Box，压缩包用 Files）；重写 `guessTitleFromPath()` 接受完整 item 对象，清理版本号标记并智能提取标题
+
+### 技术决策
+
+- .app 是目录而非文件，使用 `rglob` 计算包内文件大小
+- 标题清理使用正则去除版本号、括号标记等噪音，提升自动识别准确率
