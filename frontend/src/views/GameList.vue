@@ -17,16 +17,31 @@ const tag = ref('')
 const page = ref(1)
 const pageSize = ref(20)
 
+// 高级搜索
+const showAdvanced = ref(false)
+const sortBy = ref('updated_at')
+const sortOrder = ref('desc')
+const ratingRange = ref([0, 10])
+const dateRange = ref(null)
+
 async function fetchGames() {
   loading.value = true
   try {
     const params = {
       skip: (page.value - 1) * pageSize.value,
       limit: pageSize.value,
+      sort_by: sortBy.value,
+      sort_order: sortOrder.value,
     }
     if (search.value) params.search = search.value
     if (developer.value) params.developer = developer.value
     if (tag.value) params.tag = tag.value
+    if (ratingRange.value[0] > 0) params.min_rating = ratingRange.value[0]
+    if (ratingRange.value[1] < 10) params.max_rating = ratingRange.value[1]
+    if (dateRange.value && dateRange.value[0]) {
+      params.start_date = formatDateParam(dateRange.value[0])
+      params.end_date = formatDateParam(dateRange.value[1])
+    }
 
     const data = await getGames(params)
     games.value = data.items
@@ -38,6 +53,12 @@ async function fetchGames() {
   }
 }
 
+function formatDateParam(date) {
+  if (!date) return ''
+  const d = new Date(date)
+  return d.toISOString().split('T')[0]
+}
+
 function handleSearch() {
   page.value = 1
   fetchGames()
@@ -47,6 +68,10 @@ function resetFilters() {
   search.value = ''
   developer.value = ''
   tag.value = ''
+  sortBy.value = 'updated_at'
+  sortOrder.value = 'desc'
+  ratingRange.value = [0, 10]
+  dateRange.value = null
   page.value = 1
   fetchGames()
 }
@@ -211,6 +236,53 @@ watch(() => route.query.tag, (newTag) => {
         />
         <el-button type="primary" @click="handleSearch">搜索</el-button>
         <el-button @click="resetFilters">重置</el-button>
+        <el-button text @click="showAdvanced = !showAdvanced">
+          {{ showAdvanced ? '收起' : '高级搜索' }}
+          <el-icon><ArrowDown v-if="!showAdvanced" /><ArrowUp v-else /></el-icon>
+        </el-button>
+      </div>
+
+      <!-- 高级搜索面板 -->
+      <div v-show="showAdvanced" class="advanced-filters">
+        <div class="advanced-row">
+          <span class="filter-label">排序:</span>
+          <el-select v-model="sortBy" style="width: 130px" @change="handleSearch">
+            <el-option value="updated_at" label="更新时间" />
+            <el-option value="created_at" label="创建时间" />
+            <el-option value="rating" label="评分" />
+            <el-option value="title" label="标题" />
+          </el-select>
+          <el-select v-model="sortOrder" style="width: 90px" @change="handleSearch">
+            <el-option value="desc" label="降序" />
+            <el-option value="asc" label="升序" />
+          </el-select>
+        </div>
+        <div class="advanced-row">
+          <span class="filter-label">评分范围:</span>
+          <el-slider
+            v-model="ratingRange"
+            range
+            :min="0"
+            :max="10"
+            :step="0.5"
+            style="width: 200px"
+            @change="handleSearch"
+          />
+          <span class="range-text">{{ ratingRange[0] }} - {{ ratingRange[1] }}</span>
+        </div>
+        <div class="advanced-row">
+          <span class="filter-label">发行日期:</span>
+          <el-date-picker
+            v-model="dateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            value-format="YYYY-MM-DD"
+            style="width: 300px"
+            @change="handleSearch"
+          />
+        </div>
       </div>
     </el-card>
 
@@ -369,6 +441,34 @@ watch(() => route.query.tag, (newTag) => {
   gap: 12px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.advanced-filters {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.advanced-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filter-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  min-width: 60px;
+}
+
+.range-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  min-width: 50px;
 }
 
 .table-card {

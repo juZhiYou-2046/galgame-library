@@ -96,3 +96,24 @@
 - 导出字段排除 id/cover/created_at/updated_at 等自动生成字段
 - CSV 使用 utf-8-sig BOM 确保 Excel 正确识别中文
 - 冲突策略基于游戏标题判断是否已存在
+
+## Step 5: 搜索增强（模糊多字段搜索）
+
+**日期:** 2026-06-14
+
+**目标:** 提供更智能的搜索体验，支持多条件组合和排序。
+
+### 后端改动
+
+- **修改 `app/services/game_service.py`:** list_games 新增参数：sort_by/sort_order（排序）、min_rating/max_rating（评分范围）、start_date/end_date（日期范围）；新增 tags 字段到搜索范围；新增 get_developers() 方法（去重开发商列表）和 highlight_text() 工具方法
+- **修改 `app/api/games.py`:** 列表 API 新增排序、评分范围、日期范围查询参数；新增 `GET /api/games/developers` 开发商自动补全接口
+
+### 前端改动
+
+- **修改 `frontend/src/views/GameList.vue`:** 新增可折叠的高级搜索面板，包含排序选择（更新时间/创建时间/评分/标题）、评分范围滑块、日期范围选择器；所有筛选条件联动查询
+
+### 技术决策
+
+- 排序使用白名单字段映射，防止 SQL 注入
+- 日期过滤使用字符串比较（release_date 为 String 类型，格式 YYYY-MM-DD）
+- 高级搜索面板默认折叠，不影响基础搜索的简洁体验

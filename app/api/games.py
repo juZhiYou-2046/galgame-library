@@ -21,15 +21,38 @@ def list_games(
     search: Optional[str] = Query(None, description="搜索关键词"),
     developer: Optional[str] = Query(None, description="按开发商筛选"),
     tag: Optional[str] = Query(None, description="按标签筛选"),
+    sort_by: str = Query("updated_at", description="排序字段: updated_at, created_at, rating, title"),
+    sort_order: str = Query("desc", description="排序方向: asc, desc"),
+    min_rating: Optional[float] = Query(None, description="最低评分"),
+    max_rating: Optional[float] = Query(None, description="最高评分"),
+    start_date: Optional[str] = Query(None, description="发行日期起始 (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="发行日期截止 (YYYY-MM-DD)"),
     skip: int = Query(0, ge=0, description="跳过条数"),
     limit: int = Query(100, ge=1, le=500, description="每页条数"),
     db: Session = Depends(get_db),
 ):
-    """获取游戏列表，支持搜索和筛选"""
+    """获取游戏列表，支持搜索、筛选和排序"""
     items, total = GameService.list_games(
-        db, search=search, developer=developer, tag=tag, skip=skip, limit=limit
+        db,
+        search=search,
+        developer=developer,
+        tag=tag,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        min_rating=min_rating,
+        max_rating=max_rating,
+        start_date=start_date,
+        end_date=end_date,
+        skip=skip,
+        limit=limit,
     )
     return GameListResponse(total=total, items=items)
+
+
+@router.get("/developers")
+def list_developers(q: Optional[str] = Query("", description="搜索关键词"), db: Session = Depends(get_db)):
+    """获取开发商列表（自动补全用）"""
+    return GameService.get_developers(db, q)
 
 
 @router.get("/{game_id}", response_model=GameResponse)
