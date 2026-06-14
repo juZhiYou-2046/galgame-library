@@ -71,3 +71,28 @@
 
 - Game.rating 由评价自动计算（SQL AVG），用户不可在表单中直接修改
 - 评价使用整数评分（1-10），Game.rating 存储浮点平均分
+
+## Step 4: 批量导入导出（JSON/CSV）
+
+**日期:** 2026-06-14
+
+**目标:** 支持游戏库数据的完整导入和导出。
+
+### 后端改动
+
+- **新增 `app/api/import_export.py`:** 导入导出 API 路由
+  - `GET /api/games/export?format=json|csv` 导出所有游戏数据
+  - `POST /api/games/import` 接受 JSON/CSV 文件上传，支持 skip/update 冲突策略
+  - JSON 导出为格式化数组，CSV 使用 utf-8-sig 编码（兼容 Excel）
+- **修改 `app/main.py`:** 注册 import_export router
+
+### 前端改动
+
+- **新增 `frontend/src/api/importExport.js`:** 导入导出 API 调用封装
+- **修改 `frontend/src/views/GameList.vue`:** 页头新增"导出"下拉按钮（JSON/CSV）和"导入"按钮；导入对话框支持文件选择、冲突策略选择（跳过/覆盖）和结果统计展示
+
+### 技术决策
+
+- 导出字段排除 id/cover/created_at/updated_at 等自动生成字段
+- CSV 使用 utf-8-sig BOM 确保 Excel 正确识别中文
+- 冲突策略基于游戏标题判断是否已存在

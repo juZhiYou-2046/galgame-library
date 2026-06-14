@@ -3,6 +3,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getGames, deleteGame } from '../api/games'
+import { getExportUrl, importGames } from '../api/importExport'
 
 const router = useRouter()
 const route = useRoute()
@@ -88,6 +89,46 @@ function filterByTag(tagName) {
   fetchGames()
 }
 
+// 导入导出相关
+const showImportDialog = ref(false)
+const importFile = ref(null)
+const conflictStrategy = ref('skip')
+const importing = ref(false)
+const importResult = ref(null)
+
+function handleExport(format) {
+  window.open(getExportUrl(format), '_blank')
+}
+
+function handleImportFileChange(event) {
+  importFile.value = event.target.files?.[0] || null
+}
+
+function openImportDialog() {
+  importFile.value = null
+  conflictStrategy.value = 'skip'
+  importResult.value = null
+  showImportDialog.value = true
+}
+
+async function handleImport() {
+  if (!importFile.value) {
+    ElMessage.warning('请选择要导入的文件')
+    return
+  }
+  importing.value = true
+  importResult.value = null
+  try {
+    importResult.value = await importGames(importFile.value, conflictStrategy.value)
+    ElMessage.success(`导入完成: 新增 ${importResult.value.created}，更新 ${importResult.value.updated}，跳过 ${importResult.value.skipped}`)
+    fetchGames()
+  } catch (err) {
+    ElMessage.error('导入失败: ' + (err.response?.data?.detail || err.message))
+  } finally {
+    importing.value = false
+  }
+}
+
 function getCoverUrl(cover) {
   if (!cover) return ''
   if (cover.startsWith('http')) return cover
@@ -115,6 +156,21 @@ watch(() => route.query.tag, (newTag) => {
     <div class="page-header">
       <h2 class="page-title">游戏列表</h2>
       <div class="header-actions">
+        <el-dropdown @command="handleExport" style="margin-right: 8px">
+          <el-button>
+            导出 <el-icon><ArrowDown /></el-icon>
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="json">导出 JSON</el-dropdown-item>
+              <el-dropdown-item command="csv">导出 CSV</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+        <el-button @click="openImportDialog">
+          <el-icon><Upload /></el-icon>
+          导入
+        </el-button>
         <el-button type="primary" @click="goToScan">
           <el-icon><Search /></el-icon>
           扫描目录
@@ -231,6 +287,53 @@ watch(() => route.query.tag, (newTag) => {
         />
       </div>
     </el-card>
+
+    <!-- 导入对话框 -->
+    <el-dialog v-model="showImportDialog" title="导入游戏数据" width="500px">
+      <el-form label-width="100px">
+        <el-form-item label="选择文件">
+          <el-upload
+            :auto-upload="false"
+            :show-file-list="false"
+            accept=".json,.csv"
+            @change="handleImportFileChange"
+          >
+            <el-button>
+              <el-icon><Upload /></el-icon>
+              选择文件
+            </el-button>
+          </el-upload>
+          <span v-if="importFile" class="import-file-name">{{ importFile.name }}</span>
+        </el-form-item>
+        <el-form-item label="冲突策略">
+          <el-radio-group v-model="conflictStrategy">
+            <el-radio value="skip">跳过已存在的</el-radio>
+            <el-radio value="update">覆盖更新</el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+
+      <div v-if="importResult" class="import-result">
+        <el-alert
+          :title="`导入完成: 共 ${importResult.total} 条`"
+          :type="importResult.errors.length ? 'warning' : 'success'"
+          show-icon
+          :closable="false"
+        >
+          <div>新增: {{ importResult.created }} | 更新: {{ importResult.updated }} | 跳过: {{ importResult.skipped }}</div>
+          <div v-if="importResult.errors.length" style="margin-top: 4px">
+            错误: {{ importResult.errors.join('; ') }}
+          </div>
+        </el-alert>
+      </div>
+
+      <template #footer>
+        <el-button @click="showImportDialog = false">关闭</el-button>
+        <el-button type="primary" :loading="importing" :disabled="!importFile" @click="handleImport">
+          开始导入
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -315,5 +418,15 @@ watch(() => route.query.tag, (newTag) => {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--border-color);
+}
+
+.import-file-name {
+  margin-left: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.import-result {
+  margin-top: 16px;
 }
 </style>
