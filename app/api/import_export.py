@@ -109,12 +109,29 @@ async def import_games(
             if conflict_strategy == "update":
                 for field in EXPORT_FIELDS:
                     if field in record and field != "title":
-                        setattr(existing, field, record[field])
+                        value = record[field]
+                        if field == "rating":
+                            try:
+                                value = float(value) if value != "" else 0.0
+                            except (ValueError, TypeError):
+                                value = 0.0
+                        setattr(existing, field, value)
                 updated += 1
             else:
                 skipped += 1
         else:
-            game = Game(**{field: record.get(field, "") for field in EXPORT_FIELDS})
+            game_data = {}
+            for field in EXPORT_FIELDS:
+                value = record.get(field, "")
+                # rating 字段需要数值类型
+                if field == "rating":
+                    try:
+                        game_data[field] = float(value) if value != "" else 0.0
+                    except (ValueError, TypeError):
+                        game_data[field] = 0.0
+                else:
+                    game_data[field] = str(value) if value else ""
+            game = Game(**game_data)
             db.add(game)
             created += 1
 

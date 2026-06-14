@@ -1,0 +1,118 @@
+name: Build Desktop Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g. v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            platform: macOS
+          - os: windows-latest
+            platform: Windows
+
+    runs-on: ${{ matrix.os }}
+    name: Build ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm install
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Build executable with PyInstaller
+        run: python build_desktop_ci.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GalgameLibrary-${{ matrix.platform }}
+          path: dist/*.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    name: Create Release
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Galgame Library ${{ steps.version.outputs.tag }}
+          body: |
+            ## Galgame Library ${{ steps.version.outputs.tag }}
+
+            ### Downloads
+
+            | Platform | File |
+            |----------|------|
+            | macOS | `GalgameLibrary-${{ steps.version.outputs.tag }}-macOS.zip` |
+            | Windows | `GalgameLibrary-${{ steps.version.outputs.tag }}-Windows.zip` |
+
+            ### How to use
+
+            1. Download the zip file for your platform
+            2. Extract it to a folder of your choice
+            3. Run the launcher script (macOS: double-click the `.command` file; Windows: double-click `启动.bat`)
+            4. Your browser will open automatically at `http://localhost:8000`
+
+            ### Notes
+
+            - Data is stored in the `data/` folder next to the executable
+            - Cover images are stored in the `covers/` folder
+            - macOS users: if you see a security warning, right-click the file and select "Open"
+          files: |
+            artifacts/**/*.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

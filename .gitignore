@@ -2,12 +2,24 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
-dist/
-build/
 *.egg
 .venv/
 venv/
 env/
+*.spec
+
+# Build artifacts
+dist/
+build/
+*.command
+
+# Node / Frontend
+node_modules/
+frontend/dist/
+frontend/node_modules/
+
+# PyInstaller
+*.manifest
 
 # IDE
 .vscode/
@@ -22,9 +34,18 @@ Thumbs.db
 
 # Data
 data/*.db
+data/test.db
 covers/*
 !covers/.gitkeep
 
 # Environment
 .env
 *.env.local
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Test database
+data/test.db

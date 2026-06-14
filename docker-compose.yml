@@ -1,0 +1,14 @@
+services:
+  galgame-library:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./covers:/app/covers
+    environment:
+      - DATABASE_URL=sqlite:////app/data/galgame.db
+      - CORS_ORIGINS=http://localhost:8000
+      - DATA_DIR=/app/data
+      - COVERS_DIR=/app/covers
+    restart: unless-stopped

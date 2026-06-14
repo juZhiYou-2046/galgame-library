@@ -117,3 +117,51 @@
 - 排序使用白名单字段映射，防止 SQL 注入
 - 日期过滤使用字符串比较（release_date 为 String 类型，格式 YYYY-MM-DD）
 - 高级搜索面板默认折叠，不影响基础搜索的简洁体验
+
+## Step 6: 基础设施修复
+
+**日期:** 2026-06-14
+
+**目标:** 补齐项目的工程化基础设施。
+
+### 6a: CORS 白名单 + 环境变量
+
+- **重写 `app/config.py`:** 使用 pydantic-settings 从环境变量读取所有配置（DATABASE_URL, CORS_ORIGINS, DATA_DIR, COVERS_DIR 等）
+- **修改 `app/main.py`:** CORS 改为从 config 读取白名单列表；新增前端静态文件托管（SPA 路由回退）
+- **修改 `app/database.py`:** DATABASE_URL 从 settings 读取
+- **修改 `app/api/games.py`:** 封面上传使用 settings 配置
+- **新增 `.env.example`:** 列出所有环境变量及默认值
+
+### 6b: Alembic 数据库迁移
+
+- **新增 `alembic.ini`:** 标准 alembic 配置
+- **新增 `alembic/env.py`:** 导入 Base.metadata 和所有模型
+- **新增 `alembic/versions/001_initial.py`:** 初始迁移脚本（games + reviews 表）
+
+### 6c: Docker
+
+- **新增 `Dockerfile`:** 多阶段构建（Node 构建前端 + Python 运行后端）
+- **新增 `docker-compose.yml`:** 单服务配置，volume 挂载 data/ 和 covers/
+
+### 6d: 测试
+
+- **新增 `tests/conftest.py`:** 测试 fixtures（内存 SQLite、TestClient、示例数据）
+- **新增 `tests/test_api_games.py`:** 11 个 Game CRUD API 测试
+- **新增 `tests/test_api_tags.py`:** 4 个 Tags API 测试
+- **新增 `tests/test_api_reviews.py`:** 7 个 Reviews API 测试
+- **新增 `tests/test_api_import_export.py`:** 7 个导入导出测试
+- **新增 `tests/test_api_scanner.py`:** 6 个 Scanner API 测试
+- **新增 `frontend/vitest.config.js`:** vitest 配置
+- **新增 `frontend/src/views/__tests__/GameList.test.js`:** 列表页组件基础测试
+- **修改 `frontend/package.json`:** 添加 vitest、@vue/test-utils、jsdom 依赖
+- **修改 `requirements.txt`:** 添加 pytest、httpx 依赖
+- **总计: 35 个后端测试全部通过**
+
+### 桌面打包 + CI/CD
+
+- **新增 `desktop_launcher.py`:** 桌面启动器（启动 uvicorn + 自动打开浏览器）
+- **新增 `build_desktop.py`:** 本地 PyInstaller 打包脚本
+- **新增 `build_desktop_ci.py`:** CI 环境打包脚本
+- **新增 `.github/workflows/build-desktop.yml`:** GitHub Actions CI/CD，在 macOS 和 Windows runner 上构建安装包，推送 tag 时自动创建 Release
+- **修改 `app/main.py`:** FastAPI 托管前端静态文件（SPA 路由回退）
+- **修改 `.gitignore`:** 新增构建产物、测试缓存等忽略规则
